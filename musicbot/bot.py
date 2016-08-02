@@ -399,7 +399,7 @@ class MusicBot(discord.Client):
                     entry.meta['author'].mention, entry.title, player.voice_client.channel.name)
             else:
                 if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
-                    newmsg = "Now Playing: **%s** added by **%s** %s\n" % (
+                    newmsg = "Now Playing: **%s** added by **%s** '[Length: %s]'\n" % (
                         player.current_entry.title, player.current_entry.meta['author'].name, song_total)
                 else:
                     newmsg = "Now Playing: **%s** %s\n" % (player.current_entry.title, song_total)
