@@ -752,10 +752,8 @@ class MusicBot(discord.Client):
             helpmsg = "**Commands**\n```"
             commands = []
 
-            for att in dir(self):
-                if att.startswith('cmd_') and att != 'cmd_help':
-                    command_name = att.replace('cmd_', '').lower()
-                    commands.append("{}{}".format(self.config.command_prefix, command_name))
+            for command_name in ['play', 'pause', 'skip', 'resume', 'search', 'shuffle', 'volume', 'disconnect', 'clear', 'perms', 'queue', 'np', 'id', 'help', 'summon']:
+                commands.append("{}{}".format(self.config.command_prefix, command_name))
 
             helpmsg += ", ".join(commands)
             helpmsg += "```"
