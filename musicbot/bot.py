@@ -391,13 +391,17 @@ class MusicBot(discord.Client):
                         await self.safe_delete_message(last_np_msg)
                         self.server_specific_data[channel.server]['last_np_msg'] = None
                     break  # This is probably redundant
+			
 
             if self.config.now_playing_mentions:
                 newmsg = '%s - your song **%s** is now playing in %s!' % (
                     entry.meta['author'].mention, entry.title, player.voice_client.channel.name)
             else:
-                newmsg = 'Now playing in %s: **%s**' % (
-                    player.voice_client.channel.name, entry.title)
+				if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
+					newmsg = "Now Playing: **%s** added by **%s** %s\n" % (
+						player.current_entry.title, player.current_entry.meta['author'].name, prog_str)
+				else:
+					newmsg = "Now Playing: **%s** %s\n" % (player.current_entry.title, prog_str)
 
             if self.server_specific_data[channel.server]['last_np_msg']:
                 self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
