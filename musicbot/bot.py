@@ -395,14 +395,14 @@ class MusicBot(discord.Client):
             song_total = str(timedelta(seconds=player.current_entry.duration)).lstrip('0').lstrip(':')
 
             if self.config.now_playing_mentions:
-                newmsg = '%s - your song **%s** is now playing in %s!' % (
-                    entry.meta['author'].mention, entry.title, player.voice_client.channel.name)
+                newmsg = '%s - your song **%s** is now playing in %s!\nLink: <%s>' % (
+                    entry.meta['author'].mention, entry.title, player.voice_client.channel.name, player.current_entry.url)
             else:
                 if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
-                    newmsg = "Now Playing: **%s** added by **%s** `[Length: %s]`\n" % (
-                        player.current_entry.title, player.current_entry.meta['author'].name, song_total)
+                    newmsg = "Now Playing: **%s** added by **%s** `[Length: %s]`\nLink: <%s>\n" % (
+                        player.current_entry.title, player.current_entry.meta['author'].name, song_total, player.current_entry.url)
                 else:
-                    newmsg = "Now Playing: **%s** %s\n" % (player.current_entry.title, song_total)
+                    newmsg = "Now Playing: **%s** %s\nLink: <%s>\n" % (player.current_entry.title, song_total, player.current_entry.url)
 
             if self.server_specific_data[channel.server]['last_np_msg']:
                 self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
