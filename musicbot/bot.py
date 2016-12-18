@@ -7,6 +7,7 @@ import inspect
 import aiohttp
 import discord
 import asyncio
+import logging
 import traceback
 
 from discord import utils
@@ -37,6 +38,12 @@ from .constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 
 load_opus_lib()
 
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+time = time.strftime("[%Y-%m-%d-%H-%M-%S]")
+handler = logging.FileHandler(filename='log/musicBot '+time+'.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
 class SkipState:
     def __init__(self):
@@ -392,17 +399,19 @@ class MusicBot(discord.Client):
                         self.server_specific_data[channel.server]['last_np_msg'] = None
                     break  # This is probably redundant
             
+            song_progress = str(timedelta(seconds=player.progress)).lstrip('0').lstrip(':')
             song_total = str(timedelta(seconds=player.current_entry.duration)).lstrip('0').lstrip(':')
+            prog_str = '`[%s/%s]`' % (song_progress, song_total)
 
             if self.config.now_playing_mentions:
                 newmsg = '%s - your song **%s** is now playing in %s!\nLink: <%s>' % (
                     entry.meta['author'].mention, entry.title, player.voice_client.channel.name, player.current_entry.url)
             else:
                 if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
-                    newmsg = "Now Playing: **%s** added by **%s** `[Length: %s]`\nLink: <%s>\n" % (
-                        player.current_entry.title, player.current_entry.meta['author'].name, song_total, player.current_entry.url)
+                    newmsg = "Now Playing: **%s** added by **%s** %s\nLink: <%s>\n" % (
+                        player.current_entry.title, player.current_entry.meta['author'].name, prog_str, player.current_entry.url)
                 else:
-                    newmsg = "Now Playing: **%s** %s\nLink: <%s>\n" % (player.current_entry.title, song_total, player.current_entry.url)
+                    newmsg = "Now Playing: **%s** %s\nLink: <%s>\n" % (player.current_entry.title, prog_str, player.current_entry.url)
 
             if self.server_specific_data[channel.server]['last_np_msg']:
                 self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
@@ -469,7 +478,7 @@ class MusicBot(discord.Client):
             name = u'{}{}'.format(prefix, entry.title)[:128]
             game = discord.Game(name=name)
 
-        await self.change_status(game)
+        await self.change_presence(game=game)
 
 
     async def safe_send_message(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False):
@@ -1279,10 +1288,10 @@ class MusicBot(discord.Client):
             prog_str = '`[%s/%s]`' % (song_progress, song_total)
 
             if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
-                np_text = "Now Playing: **%s** added by **%s** `[Length: %s]`\nLink: <%s>\n" % (
-                    player.current_entry.title, player.current_entry.meta['author'].name, song_total, player.current_entry.url)
+                np_text = "Now Playing: **%s** added by **%s** %s\nLink: <%s>\n" % (
+                    player.current_entry.title, player.current_entry.meta['author'].name, prog_str, player.current_entry.url)
             else:
-                np_text = "Now Playing: **%s** %s\nLink: <%s>\n" % (player.current_entry.title, song_total, player.current_entry.url)
+                np_text = "Now Playing: **%s** %s\nLink: <%s>\n" % (player.current_entry.title, prog_str, player.current_entry.url)
 
             self.server_specific_data[server]['last_np_msg'] = await self.safe_send_message(channel, np_text)
             await self._manual_delete_check(message)
@@ -1524,16 +1533,26 @@ class MusicBot(discord.Client):
             prog_str = '`[%s/%s]`' % (song_progress, song_total)
 
             if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
-                lines.append("Now Playing: **%s** added by **%s** %s\n" % (
+                lines.append("Now Playing: **%s** added by **%s** %s" % (
                     player.current_entry.title, player.current_entry.meta['author'].name, prog_str))
             else:
-                lines.append("Now Playing: **%s** %s\n" % (player.current_entry.title, prog_str))
+                lines.append("Now Playing: **%s** %s" % (player.current_entry.title, prog_str))
+                
+            if len(player.playlist.entries) == 0:
+                lines.append(
+                    'There are no songs after this one! Queue something with {}play.\n'.format(self.config.command_prefix))
+            else:
+                lines.append('\n')
+            
 
         for i, item in enumerate(player.playlist, 1):
+            song_total = str(timedelta(seconds=item.duration)).lstrip('0').lstrip(':')
+            prog_str = '`[%s]`' % (song_total)
+            
             if item.meta.get('channel', False) and item.meta.get('author', False):
-                nextline = '`{}.` **{}** added by **{}**'.format(i, item.title, item.meta['author'].name).strip()
+                nextline = '`{}.` **{}** added by **{}** {}'.format(i, item.title, item.meta['author'].name, prog_str).strip()
             else:
-                nextline = '`{}.` **{}**'.format(i, item.title).strip()
+                nextline = '`{}.` **{}** {}'.format(i, item.title, prog_str).strip()
 
             currentlinesum = sum(len(x) + 1 for x in lines)  # +1 is for newline char
 
@@ -1550,10 +1569,10 @@ class MusicBot(discord.Client):
         if not lines:
             lines.append(
                 'There are no songs queued! Queue something with {}play.'.format(self.config.command_prefix))
-
+        
         message = '\n'.join(lines)
         return Response(message, delete_after=30)
-
+    
     async def cmd_clean(self, message, channel, server, author, search_range=50):
         """
         Usage:
@@ -1805,13 +1824,21 @@ class MusicBot(discord.Client):
         await self.disconnect_voice_client(server)
         return Response(":hear_no_evil:", delete_after=20)
 
-    async def cmd_restart(self, channel):
-        await self.safe_send_message(channel, ":wave:")
+    async def cmd_restart(self, message, channel, server, author):
+        # Clean up before restart
+        wave = await self.safe_send_message(channel, ":wave:")
+        await asyncio.sleep(2)
+        await self.safe_delete_message(wave)
+        await self.cmd_clean(message, channel, server, author)
         await self.disconnect_all_voice_clients()
         raise exceptions.RestartSignal
 
-    async def cmd_shutdown(self, channel):
-        await self.safe_send_message(channel, ":wave:")
+    async def cmd_shutdown(self, message, channel, server, author):
+        # Clean up before quit
+        wave = await self.safe_send_message(channel, ":wave:")
+        await asyncio.sleep(2)
+        await self.safe_delete_message(wave)
+        await self.cmd_clean(message, channel, server, author)
         await self.disconnect_all_voice_clients()
         raise exceptions.TerminateSignal
 
