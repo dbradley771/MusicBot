@@ -1341,6 +1341,8 @@ class MusicBot(discord.Client):
 
         if self.config.auto_playlist:
             await self.on_player_finished_playing(player)
+         
+        return Response(":thumbsup:", delete_after=20)
 
     async def cmd_pause(self, player):
         """
