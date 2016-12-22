@@ -260,6 +260,7 @@ class MusicBot(discord.Client):
             for x in range(retries):
                 try:
                     print("Attempting connection...")
+                    await self.deafen_voice_client(channel, deaf=True)
                     await asyncio.wait_for(voice_client.connect(), timeout=10, loop=self.loop)
                     print("Connection established.")
                     break
@@ -290,6 +291,7 @@ class MusicBot(discord.Client):
 
     async def move_voice_client(self, channel):
         await self._update_voice_state(channel)
+        await self.deafen_voice_client(channel, deaf=True)
 
     async def reconnect_voice_client(self, server):
         if server.id not in self.the_voice_clients:
