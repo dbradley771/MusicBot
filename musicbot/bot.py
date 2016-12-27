@@ -411,7 +411,7 @@ class MusicBot(discord.Client):
             else:
                 if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
                     newmsg = "Now Playing: **%s** added by **%s** (%s) %s\nLink: <%s>\n" % (
-                        player.current_entry.title, player.current_entry.meta['author'].display_name, player.current_entry.meta['author'].name, prog_str, player.current_entry.url)
+                        player.current_entry.title, player.current_entry.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), player.current_entry.meta['author'].name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str, player.current_entry.url)
                 else:
                     newmsg = "Now Playing: **%s** %s\nLink: <%s>\n" % (player.current_entry.title, prog_str, player.current_entry.url)
 
@@ -1291,7 +1291,7 @@ class MusicBot(discord.Client):
 
             if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
                 np_text = "Now Playing: **%s** added by **%s** (%s) %s\nLink: <%s>\n" % (
-                    player.current_entry.title, player.current_entry.meta['author'].display_name, player.current_entry.meta['author'].name, prog_str, player.current_entry.url)
+                    player.current_entry.title, player.current_entry.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), player.current_entry.meta['author'].name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str, player.current_entry.url)
             else:
                 np_text = "Now Playing: **%s** %s\nLink: <%s>\n" % (player.current_entry.title, prog_str, player.current_entry.url)
 
@@ -1538,7 +1538,7 @@ class MusicBot(discord.Client):
 
             if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
                 lines.append("Now Playing: **%s** added by **%s** (%s) %s" % (
-                    player.current_entry.title, player.current_entry.meta['author'].display_name, player.current_entry.meta['author'].name, prog_str))
+                    player.current_entry.title, player.current_entry.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), player.current_entry.meta['author'].name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str))
             else:
                 lines.append("Now Playing: **%s** %s" % (player.current_entry.title, prog_str))
                 
@@ -1554,7 +1554,7 @@ class MusicBot(discord.Client):
             prog_str = '`[%s]`' % (song_total)
             
             if item.meta.get('channel', False) and item.meta.get('author', False):
-                nextline = '`{}.` **{}** added by **{}** ({}) {}'.format(i, item.title, item.meta['author'].display_name, player.current_entry.meta['author'].name, prog_str).strip()
+                nextline = '`{}.` **{}** added by **{}** ({}) {}'.format(i, item.title, item.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), player.current_entry.meta['author'].name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str).strip()
             else:
                 nextline = '`{}.` **{}** {}'.format(i, item.title, prog_str).strip()
 
