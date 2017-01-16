@@ -72,12 +72,13 @@ class BasePlaylistEntry:
 
 
 class URLPlaylistEntry(BasePlaylistEntry):
-    def __init__(self, playlist, url, title, duration=0, expected_filename=None, **meta):
+    def __init__(self, playlist, url, title, thumbnail, duration=0, expected_filename=None, **meta):
         super().__init__()
 
         self.playlist = playlist
         self.url = url
         self.title = title
+        self.thumbnail = thumbnail
         self.duration = duration
         self.expected_filename = expected_filename
         self.meta = meta
@@ -91,6 +92,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
         # TODO: version check
         url = data['url']
         title = data['title']
+        thumbnail = data['thumbnail']
         duration = data['duration']
         downloaded = data['downloaded']
         filename = data['filename'] if downloaded else None
@@ -104,7 +106,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
         if 'author' in data['meta']:
             meta['author'] = meta['channel'].server.get_member(data['meta']['author']['id'])
 
-        return cls(playlist, url, title, duration, filename, **meta)
+        return cls(playlist, url, title, thumbnail, duration, filename, **meta)
 
     def to_json(self):
         data = {
@@ -112,6 +114,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
             'type': self.__class__.__name__,
             'url': self.url,
             'title': self.title,
+            'thumbnail': self.thumbnail,
             'duration': self.duration,
             'downloaded': self.is_downloaded,
             'filename': self.filename,

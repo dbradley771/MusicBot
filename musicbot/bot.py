@@ -11,6 +11,7 @@ import logging
 import traceback
 
 from discord import utils
+from discord.embeds import Embed
 from discord.object import Object
 from discord.enums import ChannelType
 from discord.voice_client import VoiceClient
@@ -403,22 +404,24 @@ class MusicBot(discord.Client):
             
             song_progress = str(timedelta(seconds=player.progress)).lstrip('0').lstrip(':')
             song_total = str(timedelta(seconds=player.current_entry.duration)).lstrip('0').lstrip(':')
-            prog_str = '`[%s/%s]`' % (song_progress, song_total)
+            prog_str = '%s/%s' % (song_progress, song_total)
 
-            if self.config.now_playing_mentions:
-                newmsg = '%s - your song **%s** is now playing in %s!\nLink: <%s>' % (
-                    entry.meta['author'].mention, entry.title, player.voice_client.channel.name, player.current_entry.url)
+            if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
+                newmsg = discord.Embed(title=player.current_entry.title, description='Now playing in %s' % player.voice_client.channel.name, colour=0xFF5722, url=player.current_entry.url)
+                newmsg.set_thumbnail(url=player.current_entry.thumbnail)
+                newmsg.add_field(name="Progress", value=prog_str)
+                newmsg.add_field(name="Songs In Queue", value=len(player.playlist.entries))
+                newmsg.set_footer(text="Requested by %s (%s)" % (player.current_entry.meta['author'].display_name, player.current_entry.meta['author']), icon_url=player.current_entry.meta['author'].avatar_url)
             else:
-                if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
-                    newmsg = "Now Playing: **%s** added by **%s** (%s) %s\nLink: <%s>\n" % (
-                        player.current_entry.title, player.current_entry.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), player.current_entry.meta['author'].name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str, player.current_entry.url)
-                else:
-                    newmsg = "Now Playing: **%s** %s\nLink: <%s>\n" % (player.current_entry.title, prog_str, player.current_entry.url)
+                newmsg = discord.Embed(title=player.current_entry.title, colour=0xDEADBF, url=player.current_entry.url)
+                newmsg.set_thumbnail(url=player.current_entry.thumbnail)
+                newmsg.add_field(name="Progress", value=prog_str)
+                newmsg.add_field(name="Songs In Queue", value=len(player.playlist.entries))
 
             if self.server_specific_data[channel.server]['last_np_msg']:
-                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, newmsg, send_if_fail=True)
+                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_edit_message(last_np_msg, embed=newmsg, send_if_fail=True)
             else:
-                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, newmsg)
+                self.server_specific_data[channel.server]['last_np_msg'] = await self.safe_send_message(channel, embed=newmsg)
 
     async def on_player_resume(self, entry, **_):
         await self.update_now_playing(entry)
@@ -483,10 +486,10 @@ class MusicBot(discord.Client):
         await self.change_presence(game=game)
 
 
-    async def safe_send_message(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False):
+    async def safe_send_message(self, dest, content=None, *, tts=False, embed=None, expire_in=0, also_delete=None, quiet=False):
         msg = None
         try:
-            msg = await self.send_message(dest, content, tts=tts)
+            msg = await self.send_message(dest, content, tts=tts, embed=embed)
 
             if msg and expire_in:
                 asyncio.ensure_future(self._wait_delete_msg(msg, expire_in))
@@ -516,9 +519,9 @@ class MusicBot(discord.Client):
             if not quiet:
                 self.safe_print("Warning: Cannot delete message \"%s\", message not found" % message.clean_content)
 
-    async def safe_edit_message(self, message, new, *, send_if_fail=False, quiet=False):
+    async def safe_edit_message(self, message, new=None, *, embed=None, send_if_fail=False, quiet=False):
         try:
-            return await self.edit_message(message, new)
+            return await self.edit_message(message, new, embed=embed)
 
         except discord.NotFound:
             if not quiet:
@@ -1287,15 +1290,21 @@ class MusicBot(discord.Client):
 
             song_progress = str(timedelta(seconds=player.progress)).lstrip('0').lstrip(':')
             song_total = str(timedelta(seconds=player.current_entry.duration)).lstrip('0').lstrip(':')
-            prog_str = '`[%s/%s]`' % (song_progress, song_total)
+            prog_str = '%s/%s' % (song_progress, song_total)
 
             if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
-                np_text = "Now Playing: **%s** added by **%s** (%s) %s\nLink: <%s>\n" % (
-                    player.current_entry.title, player.current_entry.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), player.current_entry.meta['author'].name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str, player.current_entry.url)
+                np_text = discord.Embed(title=player.current_entry.title, description='Now playing in %s' % player.voice_client.channel.name, colour=0xFF5722, url=player.current_entry.url)
+                np_text.set_thumbnail(url=player.current_entry.thumbnail)
+                np_text.add_field(name="Progress", value=prog_str)
+                np_text.add_field(name="Songs In Queue", value=len(player.playlist.entries))
+                np_text.set_footer(text="Requested by %s (%s)" % (player.current_entry.meta['author'].display_name, player.current_entry.meta['author']), icon_url=player.current_entry.meta['author'].avatar_url)
             else:
-                np_text = "Now Playing: **%s** %s\nLink: <%s>\n" % (player.current_entry.title, prog_str, player.current_entry.url)
+                np_text = discord.Embed(title=player.current_entry.title, colour=0xDEADBF, url=player.current_entry.url)
+                np_text.set_thumbnail(url=player.current_entry.thumbnail)
+                np_text.add_field(name="Progress", value=prog_str)
+                np_text.add_field(name="Songs In Queue", value=len(player.playlist.entries))
 
-            self.server_specific_data[server]['last_np_msg'] = await self.safe_send_message(channel, np_text)
+            self.server_specific_data[server]['last_np_msg'] = await self.safe_send_message(channel, embed=np_text)
             await self._manual_delete_check(message)
         else:
             return Response(

@@ -77,6 +77,7 @@ class Playlist(EventEmitter):
             self,
             song_url,
             info.get('title', 'Untitled'),
+            info.get('thumbnail'),
             info.get('duration', 0) or 0,
             self.downloader.ytdl.prepare_filename(info),
             **meta
@@ -118,6 +119,7 @@ class Playlist(EventEmitter):
                         self,
                         items[url_field],
                         items.get('title', 'Untitled'),
+                        items.get('thumbnail'),
                         items.get('duration', 0) or 0,
                         self.downloader.ytdl.prepare_filename(items),
                         **meta
