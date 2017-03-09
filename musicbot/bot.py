@@ -36,15 +36,18 @@ from .opus_loader import load_opus_lib
 from .constants import VERSION as BOTVERSION
 from .constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 
-
-load_opus_lib()
-
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-errorTime = time.strftime("[%Y-%m-%d-%H-%M-%S]")
-handler = logging.FileHandler(filename='log/musicBot '+errorTime+'.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(ascerrorTime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)
+fh.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.ERROR)
+formater = logging.Formatter('%(asctime)s [%(levelname)-5.5s] %(name)s: %(message)s')
+fh.setFormatter(formater)
+ch.setFormatter(formater)
+logger.addHandler(fh)
+logger.addHandler(ch)
+
+load_opus_lib()
 
 class SkipState:
     def __init__(self):
