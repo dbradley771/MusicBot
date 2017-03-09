@@ -38,6 +38,7 @@ from .constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(filename='log/musicBot '+time.strftime("[%Y-%m-%d-%H-%M-%S]")+'.log', encoding='utf-8', mode='w')
 fh.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.ERROR)
