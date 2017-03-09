@@ -41,7 +41,7 @@ load_opus_lib()
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-errorTime = errorTime.strferrorTime("[%Y-%m-%d-%H-%M-%S]")
+errorTime = time.strferrorTime("[%Y-%m-%d-%H-%M-%S]")
 handler = logging.FileHandler(filename='log/musicBot '+errorTime+'.log', encoding='utf-8', mode='w')
 handler.setFormatter(logging.Formatter('%(ascerrorTime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
