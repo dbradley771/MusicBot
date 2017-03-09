@@ -41,9 +41,9 @@ load_opus_lib()
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-time = time.strftime("[%Y-%m-%d-%H-%M-%S]")
-handler = logging.FileHandler(filename='log/musicBot '+time+'.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+errorTime = errorTime.strferrorTime("[%Y-%m-%d-%H-%M-%S]")
+handler = logging.FileHandler(filename='log/musicBot '+errorTime+'.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(ascerrorTime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
 class SkipState:
@@ -404,18 +404,18 @@ class MusicBot(discord.Client):
             
             song_progress = str(timedelta(seconds=player.progress)).lstrip('0').lstrip(':')
             song_total = str(timedelta(seconds=player.current_entry.duration)).lstrip('0').lstrip(':')
-            prog_str = '%s/%s' % (song_progress, song_total)
+            prog_str = '%s' % (song_total)
 
             if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
                 newmsg = discord.Embed(title=player.current_entry.title, description='Now playing in %s' % player.voice_client.channel.name, colour=0xFF5722, url=player.current_entry.url)
                 newmsg.set_thumbnail(url=player.current_entry.thumbnail)
-                newmsg.add_field(name="Progress", value=prog_str)
+                newmsg.add_field(name="Time", value=prog_str)
                 newmsg.add_field(name="Songs In Queue", value=len(player.playlist.entries))
                 newmsg.set_footer(text="Requested by %s (%s)" % (player.current_entry.meta['author'].display_name, player.current_entry.meta['author']), icon_url=player.current_entry.meta['author'].avatar_url)
             else:
                 newmsg = discord.Embed(title=player.current_entry.title, colour=0xDEADBF, url=player.current_entry.url)
                 newmsg.set_thumbnail(url=player.current_entry.thumbnail)
-                newmsg.add_field(name="Progress", value=prog_str)
+                newmsg.add_field(name="Time", value=prog_str)
                 newmsg.add_field(name="Songs In Queue", value=len(player.playlist.entries))
 
             if self.server_specific_data[channel.server]['last_np_msg']:
@@ -1295,13 +1295,13 @@ class MusicBot(discord.Client):
             if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
                 np_text = discord.Embed(title=player.current_entry.title, description='Now playing in %s' % player.voice_client.channel.name, colour=0xFF5722, url=player.current_entry.url)
                 np_text.set_thumbnail(url=player.current_entry.thumbnail)
-                np_text.add_field(name="Progress", value=prog_str)
+                np_text.add_field(name="Time", value=prog_str)
                 np_text.add_field(name="Songs In Queue", value=len(player.playlist.entries))
                 np_text.set_footer(text="Requested by %s (%s)" % (player.current_entry.meta['author'].display_name, player.current_entry.meta['author']), icon_url=player.current_entry.meta['author'].avatar_url)
             else:
                 np_text = discord.Embed(title=player.current_entry.title, colour=0xDEADBF, url=player.current_entry.url)
                 np_text.set_thumbnail(url=player.current_entry.thumbnail)
-                np_text.add_field(name="Progress", value=prog_str)
+                np_text.add_field(name="Time", value=prog_str)
                 np_text.add_field(name="Songs In Queue", value=len(player.playlist.entries))
 
             self.server_specific_data[server]['last_np_msg'] = await self.safe_send_message(channel, embed=np_text)
