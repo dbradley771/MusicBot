@@ -371,7 +371,7 @@ class MusicBot(discord.Client):
             if not create:
                 raise exceptions.CommandError(
                     'The bot is not in a voice channel.  '
-                    'Use %ssummon to summon it to your voice channel.' % self.config.command_prefix)
+                    'Use %ssummon to summon it to your voice channel.' % self.config.command_prefix, expire_in=30)
 
             voice_client = await self.get_voice_client(channel)
 
@@ -1064,7 +1064,7 @@ class MusicBot(discord.Client):
         info = await self.downloader.extract_info(player.playlist.loop, playlist_url, download=False, process=False)
 
         if not info:
-            raise exceptions.CommandError("That playlist cannot be played.")
+            raise exceptions.CommandError("That playlist cannot be played.", expire_in=30)
 
         num_songs = sum(1 for _ in info['entries'])
         t0 = time.time()
@@ -1208,7 +1208,7 @@ class MusicBot(discord.Client):
             argcheck()
 
             if items_requested > max_items:
-                raise exceptions.CommandError("You cannot search for more than %s videos" % max_items)
+                raise exceptions.CommandError("You cannot search for more than %s videos" % max_items, expire_in=30)
 
         # Look jake, if you see this and go "what the fuck are you doing"
         # and have a better idea on how to do this, i'd be delighted to know.
@@ -1325,7 +1325,7 @@ class MusicBot(discord.Client):
         """
 
         if not author.voice_channel:
-            raise exceptions.CommandError('You are not in a voice channel!')
+            raise exceptions.CommandError('You are not in a voice channel!', expire_in=30)
 
         voice_client = self.the_voice_clients.get(channel.server.id, None)
         if voice_client and voice_client.channel.server == author.voice_channel.server:
@@ -1800,7 +1800,7 @@ class MusicBot(discord.Client):
         """
 
         if not channel.permissions_for(server.me).change_nickname:
-            raise exceptions.CommandError("Unable to change nickname: no permission.")
+            raise exceptions.CommandError("Unable to change nickname: no permission.", expire_in=30)
 
         nick = ' '.join([nick, *leftover_args])
 
