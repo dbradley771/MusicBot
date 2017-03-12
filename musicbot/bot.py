@@ -436,7 +436,7 @@ class MusicBot(discord.Client):
     async def on_player_stop(self, **_):
         await self.update_now_playing()
 
-    async def on_player_finished_playing(self, player, **_):
+    async def on_player_finished_playing(self, player, entry, **_):
         if not player.playlist.entries and not player.current_entry and self.config.auto_playlist:
             while self.autoplaylist:
                 song_url = choice(self.autoplaylist)
@@ -465,6 +465,12 @@ class MusicBot(discord.Client):
                 print("[Warning] No playable songs in the autoplaylist, disabling.")
                 self.config.auto_playlist = False
 
+        if not player.playlist.entries and not player.current_entry:
+            server = entry.meta.get('channel').server
+            if self.server_specific_data[server]['last_np_msg']:
+                await self.safe_delete_message(self.server_specific_data[server]['last_np_msg'])
+                self.server_specific_data[server]['last_np_msg'] = None
+        
     async def on_player_entry_added(self, playlist, entry, **_):
         pass
 
@@ -1013,7 +1019,7 @@ class MusicBot(discord.Client):
                     expire_in=30
                 )
 
-            reply_text = "Enqueued **%s** songs to be played. Position in queue: %s"
+            reply_text = "**%s** (%s) enqueued **%s** songs to be played. Position in queue: %s"
             btext = str(listlen - drop_count)
 
         else:
@@ -1036,12 +1042,12 @@ class MusicBot(discord.Client):
 
                 return await self.cmd_play(player, channel, author, permissions, leftover_args, e.use_url)
 
-            reply_text = "Enqueued **%s** to be played. Position in queue: %s"
+            reply_text = "**%s** (%s) enqueued **%s** to be played. Position in queue: %s"
             btext = entry.title
 
         if position == 1 and player.is_stopped:
             position = 'Up next!'
-            reply_text %= (btext, position)
+            reply_text %= (author.display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), str(author).translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), btext, position)
 
         else:
             try:
@@ -1051,7 +1057,7 @@ class MusicBot(discord.Client):
                 traceback.print_exc()
                 time_until = ''
 
-            reply_text %= (btext, position, time_until)
+            reply_text %= (author.display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), str(author).translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), btext, position, time_until)
 
         return Response(reply_text, delete_after=30)
 
@@ -1146,8 +1152,8 @@ class MusicBot(discord.Client):
 
             raise exceptions.CommandError(basetext, expire_in=30)
 
-        return Response("Enqueued {} songs to be played in {} seconds".format(
-            songs_added, self._fixg(ttime, 1)), delete_after=30)
+        return Response("**{}** ({}) enqueued {} songs to be played in {} seconds".format(
+            author.display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), str(author).translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), songs_added, self._fixg(ttime, 1)), delete_after=30)
 
     async def cmd_search(self, player, channel, author, permissions, leftover_args):
         """
@@ -1551,7 +1557,7 @@ class MusicBot(discord.Client):
 
             if player.current_entry.meta.get('channel', False) and player.current_entry.meta.get('author', False):
                 lines.append("Now Playing: **%s** added by **%s** (%s) %s" % (
-                    player.current_entry.title, player.current_entry.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), player.current_entry.meta['author'].name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str))
+                    player.current_entry.title, player.current_entry.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), str(player.current_entry.meta['author']).translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str))
             else:
                 lines.append("Now Playing: **%s** %s" % (player.current_entry.title, prog_str))
                 
@@ -1567,7 +1573,7 @@ class MusicBot(discord.Client):
             prog_str = '`[%s]`' % (song_total)
             
             if item.meta.get('channel', False) and item.meta.get('author', False):
-                nextline = '`{}.` **{}** added by **{}** ({}) {}'.format(i, item.title, item.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), player.current_entry.meta['author'].name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str).strip()
+                nextline = '`{}.` **{}** added by **{}** ({}) {}'.format(i, item.title, item.meta['author'].display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), str(item.meta['author']).translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), prog_str).strip()
             else:
                 nextline = '`{}.` **{}** {}'.format(i, item.title, prog_str).strip()
 
@@ -1842,21 +1848,23 @@ class MusicBot(discord.Client):
         return Response(":hear_no_evil:", delete_after=20)
 
     async def cmd_restart(self, message, channel, server, author):
+        await self.disconnect_all_voice_clients()
+        
         # Clean up before restart
         wave = await self.safe_send_message(channel, ":wave:")
         await asyncio.sleep(2)
         await self.safe_delete_message(wave)
         await self.cmd_clean(message, channel, server, author)
-        await self.disconnect_all_voice_clients()
         raise exceptions.RestartSignal
 
-    async def cmd_shutdown(self, message, channel, server, author):
+    async def cmd_shutdown(self, message, channel, player, server, author):
+        await self.disconnect_all_voice_clients()
+        
         # Clean up before quit
         wave = await self.safe_send_message(channel, ":wave:")
         await asyncio.sleep(2)
         await self.safe_delete_message(wave)
         await self.cmd_clean(message, channel, server, author)
-        await self.disconnect_all_voice_clients()
         raise exceptions.TerminateSignal
 
     async def on_message(self, message):
