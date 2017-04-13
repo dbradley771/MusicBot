@@ -868,8 +868,27 @@ class MusicBot(discord.Client):
 
         except:
             raise exceptions.CommandError('Invalid URL provided:\n{}\n'.format(server_link), expire_in=30)
+            
+    
+    async def cmd_play(self, message, channel, author, voice_channel):
+        #summon bot to channel
+        if not author.voice_channel:
+            raise exceptions.CommandError('You are not in a voice channel!', expire_in=30)
 
-    async def cmd_play(self, player, channel, author, permissions, leftover_args, song_url):
+        voice_client = self.the_voice_clients.get(channel.server.id, None)
+        if voice_client and voice_client.channel.server == author.voice_channel.server:
+            await self.move_voice_client(author.voice_channel)
+        else:
+            await self.cmd_summon(channel, author, author.voice_channel)
+        
+        #this is sad but it works
+        message_content = message.content.strip()
+        command, *args = message_content.split()
+        message.content = "*reallyplay " + str(*args)
+        
+        await self.on_message(message)
+
+    async def cmd_reallyplay(self, player, channel, author, permissions, leftover_args, song_url):
         """
         Usage:
             {command_prefix}play song_link
@@ -878,7 +897,8 @@ class MusicBot(discord.Client):
         Adds the song to the playlist.  If a link is not provided, the first
         result from a youtube search is added to the queue.
         """
-
+        
+        #get song
         song_url = song_url.strip('<>')
 
         if permissions.max_songs and player.playlist.count_for_user(author) >= permissions.max_songs:
@@ -925,7 +945,7 @@ class MusicBot(discord.Client):
 
             song_url = info['entries'][0]['webpage_url']
             info = await self.downloader.extract_info(player.playlist.loop, song_url, download=False, process=False)
-            # Now I could just do: return await self.cmd_play(player, channel, author, song_url)
+            # Now I could just do: return await self.cmd_reallyPlay(player, channel, author, song_url)
             # But this is probably fine
 
         # TODO: Possibly add another check here to see about things like the bandcamp issue
@@ -955,7 +975,7 @@ class MusicBot(discord.Client):
 
             if info['extractor'].lower() in ['youtube:playlist', 'soundcloud:set', 'bandcamp:album']:
                 try:
-                    return await self._cmd_play_playlist_async(player, channel, author, permissions, song_url, info['extractor'])
+                    return await self._cmd_reallyPlay_playlist_async(player, channel, author, permissions, song_url, info['extractor'])
                 except exceptions.CommandError:
                     raise
                 except Exception as e:
@@ -1040,7 +1060,7 @@ class MusicBot(discord.Client):
                     print("[Info] Assumed url \"%s\" was a single entry, was actually a playlist" % song_url)
                     print("[Info] Using \"%s\" instead" % e.use_url)
 
-                return await self.cmd_play(player, channel, author, permissions, leftover_args, e.use_url)
+                return await self.cmd_reallyPlay(player, channel, author, permissions, leftover_args, e.use_url)
 
             reply_text = "**%s** (%s) enqueued **%s** to be played. Position in queue: %s"
             btext = entry.title
@@ -1061,7 +1081,7 @@ class MusicBot(discord.Client):
 
         return Response(reply_text, delete_after=30)
 
-    async def _cmd_play_playlist_async(self, player, channel, author, permissions, playlist_url, extractor_type):
+    async def _cmd_reallyPlay_playlist_async(self, player, channel, author, permissions, playlist_url, extractor_type):
         """
         Secret handler to use the async wizardry to make playlist queuing non-"blocking"
         """
@@ -1275,7 +1295,7 @@ class MusicBot(discord.Client):
                 await self.safe_delete_message(confirm_message)
                 await self.safe_delete_message(response_message)
 
-                await self.cmd_play(player, channel, author, permissions, [], e['webpage_url'])
+                await self.cmd_reallyPlay(player, channel, author, permissions, [], e['webpage_url'])
 
                 return Response("Alright, coming right up!", delete_after=30)
             else:
@@ -1336,7 +1356,7 @@ class MusicBot(discord.Client):
         voice_client = self.the_voice_clients.get(channel.server.id, None)
         if voice_client and voice_client.channel.server == author.voice_channel.server:
             await self.move_voice_client(author.voice_channel)
-            return
+            return Response("...I'm already here.", delete_after=20)
 
         # move to _verify_vc_perms?
         chperms = author.voice_channel.permissions_for(author.voice_channel.server.me)
@@ -1362,7 +1382,7 @@ class MusicBot(discord.Client):
 
         if self.config.auto_playlist:
             await self.on_player_finished_playing(player)
-         
+        
         return Response(":thumbsup:", delete_after=20)
 
     async def cmd_pause(self, player):
@@ -1378,6 +1398,8 @@ class MusicBot(discord.Client):
 
         else:
             raise exceptions.CommandError('Player is not playing.', expire_in=30)
+        
+        return Response(":pause_button:", delete_after=20)
 
     async def cmd_resume(self, player):
         """
@@ -1392,6 +1414,8 @@ class MusicBot(discord.Client):
 
         else:
             raise exceptions.CommandError('Player is not paused.', expire_in=30)
+        
+        return Response(":arrow_forward:", delete_after=20)
 
     async def cmd_shuffle(self, channel, player):
         """
@@ -1857,7 +1881,7 @@ class MusicBot(discord.Client):
         await self.cmd_clean(message, channel, server, author)
         raise exceptions.RestartSignal
 
-    async def cmd_shutdown(self, message, channel, player, server, author):
+    async def cmd_shutdown(self, message, channel, server, author):
         await self.disconnect_all_voice_clients()
         
         # Clean up before quit
@@ -1869,8 +1893,8 @@ class MusicBot(discord.Client):
 
     async def on_message(self, message):
         await self.wait_until_ready()
-
         message_content = message.content.strip()
+        
         if not message_content.startswith(self.config.command_prefix):
             return
 
