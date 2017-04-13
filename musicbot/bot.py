@@ -884,7 +884,7 @@ class MusicBot(discord.Client):
         #this is sad but it works
         message_content = message.content.strip()
         command, *args = message_content.split()
-        message.content = "*reallyplay " + str(*args)
+        message.content = '{}reallyplay '.format(self.config.command_prefix) + str(*args)
         
         await self.on_message(message)
 
