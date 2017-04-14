@@ -467,10 +467,9 @@ class MusicBot(discord.Client):
 
         if not player.playlist.entries and not player.current_entry:
             server = entry.meta.get('channel').server
-            if self.server_specific_data[server]['last_np_msg']:
-                await self.safe_delete_message(self.server_specific_data[server]['last_np_msg'])
-                self.server_specific_data[server]['last_np_msg'] = None
-        
+            await self.remove_last_now_playing(server)
+            await self.disconnect_voice_client(server)
+
     async def on_player_entry_added(self, playlist, entry, **_):
         pass
 
@@ -495,6 +494,10 @@ class MusicBot(discord.Client):
 
         await self.change_presence(game=game)
 
+    async def remove_last_now_playing(self, server):
+        if self.server_specific_data[server]['last_np_msg']:
+            await self.safe_delete_message(self.server_specific_data[server]['last_np_msg'])
+            self.server_specific_data[server]['last_np_msg'] = None
 
     async def safe_send_message(self, dest, content=None, *, tts=False, embed=None, expire_in=0, also_delete=None, quiet=False):
         msg = None
@@ -1868,6 +1871,7 @@ class MusicBot(discord.Client):
 
 
     async def cmd_disconnect(self, server):
+        await self.remove_last_now_playing(server)
         await self.disconnect_voice_client(server)
         return Response(":hear_no_evil:", delete_after=20)
 
