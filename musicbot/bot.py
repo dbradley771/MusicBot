@@ -91,6 +91,7 @@ class MusicBot(discord.Client):
         self.autoplaylist = load_file(self.config.auto_playlist_file)
         self.downloader = downloader.Downloader(download_folder='audio_cache')
 
+        self.loading_song = False
         self.exit_signal = None
         self.init_ok = False
         self.cached_client_id = None
@@ -465,10 +466,11 @@ class MusicBot(discord.Client):
                 print("[Warning] No playable songs in the autoplaylist, disabling.")
                 self.config.auto_playlist = False
 
-        if not player.playlist.entries and not player.current_entry:
+        elif not player.playlist.entries and not player.current_entry:
             server = entry.meta.get('channel').server
             await self.remove_last_now_playing(server)
-            await self.disconnect_voice_client(server)
+            if not self.loading_song:
+                await self.disconnect_voice_client(server)
 
     async def on_player_entry_added(self, playlist, entry, **_):
         pass
@@ -887,7 +889,7 @@ class MusicBot(discord.Client):
         #this is sad but it works
         message_content = message.content.strip()
         command, *args = message_content.split()
-        message.content = '{}reallyplay {}'.format(self.config.command_prefix, *args)
+        message.content = '{}reallyplay {}'.format(self.config.command_prefix, ' '.join(args))
         
         await self.on_message(message)
 
@@ -901,10 +903,13 @@ class MusicBot(discord.Client):
         result from a youtube search is added to the queue.
         """
         
+        self.loading_song = True
+        
         #get song
         song_url = song_url.strip('<>')
 
         if permissions.max_songs and player.playlist.count_for_user(author) >= permissions.max_songs:
+            self.loading_song = False
             raise exceptions.PermissionsError(
                 "You have reached your enqueued song limit (%s)" % permissions.max_songs, expire_in=30
             )
@@ -917,9 +922,11 @@ class MusicBot(discord.Client):
         try:
             info = await self.downloader.extract_info(player.playlist.loop, song_url, download=False, process=False)
         except Exception as e:
+            self.loading_song = False
             raise exceptions.CommandError(e, expire_in=30)
 
         if not info:
+            self.loading_song = False
             raise exceptions.CommandError("That video cannot be played.", expire_in=30)
 
         # abstract the search handling away from the user
@@ -937,6 +944,7 @@ class MusicBot(discord.Client):
             )
 
             if not info:
+                self.loading_song = False
                 raise exceptions.CommandError(
                     "Error extracting info from search string, youtubedl returned no data.  "
                     "You may need to restart the bot if this continues to happen.", expire_in=30
@@ -944,6 +952,7 @@ class MusicBot(discord.Client):
 
             if not all(info.get('entries', [])):
                 # empty list, no data
+                self.loading_song = False
                 return
 
             song_url = info['entries'][0]['webpage_url']
@@ -957,12 +966,14 @@ class MusicBot(discord.Client):
         if 'entries' in info:
             # I have to do exe extra checks anyways because you can request an arbitrary number of search results
             if not permissions.allow_playlists and ':search' in info['extractor'] and len(info['entries']) > 1:
+                self.loading_song = False
                 raise exceptions.PermissionsError("You are not allowed to request playlists", expire_in=30)
 
             # The only reason we would use this over `len(info['entries'])` is if we add `if _` to this one
             num_songs = sum(1 for _ in info['entries'])
 
             if permissions.max_playlist_length and num_songs > permissions.max_playlist_length:
+                self.loading_song = False
                 raise exceptions.PermissionsError(
                     "Playlist has too many entries (%s > %s)" % (num_songs, permissions.max_playlist_length),
                     expire_in=30
@@ -970,6 +981,7 @@ class MusicBot(discord.Client):
 
             # This is a little bit weird when it says (x + 0 > y), I might add the other check back in
             if permissions.max_songs and player.playlist.count_for_user(author) + num_songs > permissions.max_songs:
+                self.loading_song = False
                 raise exceptions.PermissionsError(
                     "Playlist entries + your already queued songs reached limit (%s + %s > %s)" % (
                         num_songs, player.playlist.count_for_user(author), permissions.max_songs),
@@ -978,11 +990,14 @@ class MusicBot(discord.Client):
 
             if info['extractor'].lower() in ['youtube:playlist', 'soundcloud:set', 'bandcamp:album']:
                 try:
+                    self.loading_song = False
                     return await self._cmd_reallyPlay_playlist_async(player, channel, author, permissions, song_url, info['extractor'])
                 except exceptions.CommandError:
+                    self.loading_song = False
                     raise
                 except Exception as e:
                     traceback.print_exc()
+                    self.loading_song = False
                     raise exceptions.CommandError("Error queuing playlist:\n%s" % e, expire_in=30)
 
             t0 = time.time()
@@ -1037,6 +1052,7 @@ class MusicBot(discord.Client):
             await self.safe_delete_message(procmesg)
 
             if not listlen - drop_count:
+                self.loading_song = False
                 raise exceptions.CommandError(
                     "No songs were added, all songs were over max duration (%ss)" % permissions.max_song_length,
                     expire_in=30
@@ -1047,6 +1063,7 @@ class MusicBot(discord.Client):
 
         else:
             if permissions.max_song_length and info.get('duration', 0) > permissions.max_song_length:
+                self.loading_song = False
                 raise exceptions.PermissionsError(
                     "Song duration exceeds limit (%s > %s)" % (info['duration'], permissions.max_song_length),
                     expire_in=30
@@ -1062,7 +1079,8 @@ class MusicBot(discord.Client):
                 if self.config.debug_mode:
                     print("[Info] Assumed url \"%s\" was a single entry, was actually a playlist" % song_url)
                     print("[Info] Using \"%s\" instead" % e.use_url)
-
+                
+                self.loading_song = False
                 return await self.cmd_reallyPlay(player, channel, author, permissions, leftover_args, e.use_url)
 
             reply_text = "**%s** (%s) enqueued **%s** to be played. Position in queue: %s"
@@ -1082,6 +1100,7 @@ class MusicBot(discord.Client):
 
             reply_text %= (author.display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), str(author).translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), btext, position, time_until)
 
+        self.loading_song = False
         return Response(reply_text, delete_after=30)
 
     async def _cmd_reallyPlay_playlist_async(self, player, channel, author, permissions, playlist_url, extractor_type):
@@ -1093,6 +1112,7 @@ class MusicBot(discord.Client):
         info = await self.downloader.extract_info(player.playlist.loop, playlist_url, download=False, process=False)
 
         if not info:
+            self.loading_song = False
             raise exceptions.CommandError("That playlist cannot be played.", expire_in=30)
 
         num_songs = sum(1 for _ in info['entries'])
@@ -1112,6 +1132,7 @@ class MusicBot(discord.Client):
 
             except Exception:
                 traceback.print_exc()
+                self.loading_song = False
                 raise exceptions.CommandError('Error handling playlist %s queuing.' % playlist_url, expire_in=30)
 
         elif extractor_type.lower() in ['soundcloud:set', 'bandcamp:album']:
@@ -1123,6 +1144,7 @@ class MusicBot(discord.Client):
 
             except Exception:
                 traceback.print_exc()
+                self.loading_song = False
                 raise exceptions.CommandError('Error handling playlist %s queuing.' % playlist_url, expire_in=30)
 
 
@@ -1138,6 +1160,7 @@ class MusicBot(discord.Client):
                         entries_added.remove(e)
                         drop_count += 1
                     except:
+                        self.loading_song = False
                         pass
 
             if drop_count:
@@ -1173,8 +1196,10 @@ class MusicBot(discord.Client):
             if skipped:
                 basetext += "\nAdditionally, the current song was skipped for being too long."
 
+            self.loading_song = False
             raise exceptions.CommandError(basetext, expire_in=30)
 
+        self.loading_song = False
         return Response("**{}** ({}) enqueued {} songs to be played in {} seconds".format(
             author.display_name.translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), str(author).translate({96: '\`', 42: '\*', 126: '\~', 95: '\_'}), songs_added, self._fixg(ttime, 1)), delete_after=30)
 
