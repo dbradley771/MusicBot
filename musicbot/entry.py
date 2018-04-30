@@ -79,12 +79,13 @@ class BasePlaylistEntry(Serializable):
 
 
 class URLPlaylistEntry(BasePlaylistEntry):
-    def __init__(self, playlist, url, title, duration=0, expected_filename=None, **meta):
+    def __init__(self, playlist, url, title, thumbnail, duration=0, expected_filename=None, **meta):
         super().__init__()
 
         self.playlist = playlist
         self.url = url
         self.title = title
+        self.thumbnail = thumbnail
         self.duration = duration
         self.expected_filename = expected_filename
         self.meta = meta
@@ -96,6 +97,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
             'version': 1,
             'url': self.url,
             'title': self.title,
+            'thumbnail': self.thumbnail,
             'duration': self.duration,
             'downloaded': self.is_downloaded,
             'expected_filename': self.expected_filename,
@@ -118,6 +120,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
             # TODO: version check
             url = data['url']
             title = data['title']
+            thumbnail = data['thumbnail']
             duration = data['duration']
             downloaded = data['downloaded'] if playlist.bot.config.save_videos else False
             filename = data['filename'] if downloaded else None
@@ -131,7 +134,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
             if 'author' in data['meta']:
                 meta['author'] = meta['channel'].server.get_member(data['meta']['author']['id'])
 
-            entry = cls(playlist, url, title, duration, expected_filename, **meta)
+            entry = cls(playlist, url, title, thumbnail, duration, expected_filename, **meta)
             entry.filename = filename
 
             return entry
