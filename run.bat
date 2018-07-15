@@ -21,7 +21,7 @@ ENDLOCAL
 
 
 IF EXIST %SYSTEMROOT%\py.exe (
-    CMD /k "%SYSTEMROOT%\py.exe -3 run.py & TIMEOUT /t 5 & EXIT"
+    CMD /k "%SYSTEMROOT%\py.exe -3.5 run.py & TIMEOUT /t 5 & EXIT"
     EXIT
 )
 
